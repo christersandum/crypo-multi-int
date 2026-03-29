@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Transaction Investigator</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- vis-network from CDN for interactive link charts -->
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     App Shell
+     ══════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Top bar ── -->
+  <header id="topbar">
+    <div class="logo">
+      <!-- chain-link icon -->
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+      Crypto Investigator
+    </div>
+
+    <span class="case-label">Case:</span>
+    <span id="case-name-display" title="Click to rename">—</span>
+
+    <div class="topbar-spacer"></div>
+
+    <input id="search-box" type="search" placeholder="🔍  Search nodes…" autocomplete="off" />
+
+    <button class="btn" onclick="openAddNodeModal()" title="Add a person, wallet or organisation">
+      + Node
+    </button>
+    <button class="btn" onclick="openAddEdgeModal()" title="Add a crypto transaction">
+      ↔ Transaction
+    </button>
+    <button class="btn btn-success" onclick="loadSampleData()" title="Load demo data">
+      📂 Demo
+    </button>
+    <button class="btn" onclick="exportCase()" title="Export current case as JSON">
+      ⬇ Export
+    </button>
+    <label class="btn" title="Import a JSON case file">
+      ⬆ Import
+      <input id="import-input" type="file" accept=".json,application/json" class="hidden" />
+    </label>
+  </header>
+
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+    <nav class="panel-tabs">
+      <button class="tab-btn active" data-tab="graph">Graph</button>
+      <button class="tab-btn" data-tab="nodes">Nodes</button>
+      <button class="tab-btn" data-tab="cases">Cases</button>
+    </nav>
+
+    <!-- Graph controls tab -->
+    <div class="tab-content active" id="tab-graph">
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="stat-nodes">0</div>
+          <div class="stat-lbl">Nodes</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-edges">0</div>
+          <div class="stat-lbl">Transactions</div>
+        </div>
+      </div>
+
+      <div class="section-title">Add Node</div>
+
+      <form id="quick-node-form">
+        <div class="form-group">
+          <label for="q-node-label">Label</label>
+          <input id="q-node-label" class="form-control" placeholder="Name or wallet address" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="q-node-type">Type</label>
+          <select id="q-node-type" class="form-control">
+            <option value="wallet">Wallet</option>
+            <option value="person">Person</option>
+            <option value="org">Organization</option>
+            <option value="exchange">Exchange</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">+ Add Node</button>
+      </form>
+
+      <div class="section-title">Quick Transaction</div>
+
+      <form id="quick-edge-form">
+        <div class="form-group">
+          <label for="q-edge-from">From</label>
+          <select id="q-edge-from" class="form-control"><option value="">— Select —</option></select>
+        </div>
+        <div class="form-group">
+          <label for="q-edge-to">To</label>
+          <select id="q-edge-to" class="form-control"><option value="">— Select —</option></select>
+        </div>
+        <div class="form-group">
+          <label for="q-edge-amount">Amount</label>
+          <input id="q-edge-amount" class="form-control" type="number" min="0" step="any" placeholder="0.0" />
+        </div>
+        <div class="form-group">
+          <label for="q-edge-currency">Currency</label>
+          <select id="q-edge-currency" class="form-control">
+            <option>BTC</option><option>ETH</option><option>USDT</option>
+            <option>USDC</option><option>XMR</option><option>LTC</option>
+            <option>BNB</option><option>SOL</option><option>TRX</option><option>Other</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">↔ Add Transaction</button>
+      </form>
+
+    </div>
+
+    <!-- Nodes list tab -->
+    <div class="tab-content" id="tab-nodes">
+      <input id="node-search" class="form-control" placeholder="🔍  Filter nodes…" autocomplete="off" />
+      <div id="node-list" class="node-list"></div>
+    </div>
+
+    <!-- Cases tab -->
+    <div class="tab-content" id="tab-cases">
+      <button class="btn btn-primary btn-block" onclick="openNewCaseModal()">+ New Case</button>
+      <button class="btn btn-block" onclick="exportAllCases()">⬇ Export All Cases</button>
+      <div class="section-title">Your Cases</div>
+      <div id="case-list" class="case-list"></div>
+    </div>
+  </aside>
+
+  <!-- ── Graph area ── -->
+  <main id="graph-area">
+    <div id="network-canvas"></div>
+
+    <div id="graph-empty-msg">
+      <h3>🔍 No Data Yet</h3>
+      <p>Add nodes and transactions to start mapping connections,<br/>
+         or click <strong>📂 Demo</strong> to load a sample investigation.</p>
+    </div>
+
+    <div class="graph-toolbar">
+      <button class="btn" id="btn-fit" title="Fit graph to view">⊞ Fit</button>
+      <button class="btn" id="btn-physics" title="Toggle physics simulation">⏸ Physics</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Node Types</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#58a6ff"></div> Person</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#3fb950"></div> Organization</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#e3b341"></div> Wallet</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f0883e"></div> Exchange</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#8b949e"></div> Unknown</div>
+    </div>
+  </main>
+
+  <!-- ── Detail panel ── -->
+  <aside id="detail-panel">
+    <div id="detail-header"><h3>Details</h3></div>
+    <div id="detail-body">
+      <div class="detail-placeholder">Click a node or transaction to see details</div>
+    </div>
+  </aside>
+
+</div><!-- /#app -->
+
+<!-- ══════════════════════════════════════════════════
+     Modals
+     ══════════════════════════════════════════════════ -->
+
+<!-- Add / Edit Node -->
+<div id="node-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>Node</h2>
+    <form id="node-form">
+      <div class="form-group">
+        <label for="node-label">Label *</label>
+        <input id="node-label" name="node-label" class="form-control" placeholder="Full name or short label" required autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="node-type">Type *</label>
+        <select id="node-type" name="node-type" class="form-control" required>
+          <option value="wallet">Wallet</option>
+          <option value="person">Person</option>
+          <option value="org">Organization</option>
+          <option value="exchange">Exchange</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="node-address">Wallet / Account Address</label>
+        <input id="node-address" name="node-address" class="form-control" placeholder="0x… or bc1… (optional)" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="node-notes">Notes</label>
+        <textarea id="node-notes" name="node-notes" class="form-control" rows="3" placeholder="Investigation notes…"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="node-tags">Tags (comma-separated)</label>
+        <input id="node-tags" name="node-tags" class="form-control" placeholder="e.g. suspect, mixer, kyc-verified" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal('node-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Node</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add / Edit Transaction -->
+<div id="edge-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>Transaction</h2>
+    <form id="edge-form">
+      <div class="form-group">
+        <label for="edge-from">From (Sender) *</label>
+        <select id="edge-from" name="edge-from" class="form-control" required>
+          <option value="">— Select node —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="edge-to">To (Receiver) *</label>
+        <select id="edge-to" name="edge-to" class="form-control" required>
+          <option value="">— Select node —</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="form-group" style="flex:2">
+          <label for="edge-amount">Amount</label>
+          <input id="edge-amount" name="edge-amount" class="form-control" type="number" min="0" step="any" placeholder="0.0" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label for="edge-currency">Currency</label>
+          <select id="edge-currency" name="edge-currency" class="form-control">
+            <option>BTC</option><option>ETH</option><option>USDT</option>
+            <option>USDC</option><option>XMR</option><option>LTC</option>
+            <option>BNB</option><option>SOL</option><option>TRX</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="edge-date">Date</label>
+        <input id="edge-date" name="edge-date" class="form-control" type="date" />
+      </div>
+      <div class="form-group">
+        <label for="edge-txhash">Transaction Hash</label>
+        <input id="edge-txhash" name="edge-txhash" class="form-control" placeholder="abc123…" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="edge-notes">Notes</label>
+        <textarea id="edge-notes" name="edge-notes" class="form-control" rows="2" placeholder="Investigation notes…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal('edge-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Transaction</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- New Case -->
+<div id="new-case-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>New Investigation Case</h2>
+    <form id="new-case-form">
+      <div class="form-group">
+        <label for="new-case-name">Case Name *</label>
+        <input id="new-case-name" class="form-control" placeholder="e.g. Operation Coldchain" required autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal('new-case-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Case</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Rename Case -->
+<div id="rename-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>Rename Case</h2>
+    <form id="rename-case-form">
+      <div class="form-group">
+        <label for="rename-case-name">New Name *</label>
+        <input id="rename-case-name" class="form-control" required autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal('rename-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Rename</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════
+     Quick-form wiring (sidebar shortcuts)
+     ══════════════════════════════════════════════════ -->
+<script>
+  /* Refresh quick-edge selects whenever the Graph tab is activated */
+  function refreshQuickEdgeSelects() {
+    const c = window.activeCase ? window.activeCase() : null;
+    const opts = c ? c.nodes.map(n => `<option value="${n.id}">${n.label.replace(/</g,'&lt;')}</option>`).join('') : '';
+    const empty = '<option value="">— Select —</option>';
+    document.getElementById('q-edge-from').innerHTML = empty + opts;
+    document.getElementById('q-edge-to').innerHTML   = empty + opts;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    /* Quick add-node form */
+    document.getElementById('quick-node-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const label = document.getElementById('q-node-label').value.trim();
+      const type  = document.getElementById('q-node-type').value;
+      if (!label) { toast('Label is required', 'error'); return; }
+      if (!window.activeCase || !window.activeCase()) { openNewCaseModal(); return; }
+      addNode({ label, type });
+      document.getElementById('q-node-label').value = '';
+      refreshQuickEdgeSelects();
+    });
+
+    /* Quick add-transaction form */
+    document.getElementById('quick-edge-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const from     = document.getElementById('q-edge-from').value;
+      const to       = document.getElementById('q-edge-to').value;
+      const amount   = document.getElementById('q-edge-amount').value;
+      const currency = document.getElementById('q-edge-currency').value;
+      addEdge({ from, to, amount, currency });
+      document.getElementById('q-edge-amount').value = '';
+    });
+
+    /* Refresh selects each time the graph tab is shown */
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.tab === 'graph') refreshQuickEdgeSelects();
+      });
+    });
+
+    /* Also expose activeCase globally so the inline script above can call it */
+    // (it's already global via app.js – this is just belt-and-suspenders)
+  });
+</script>
+
+<script src="app.js"></script>
+</body>
+</html>
