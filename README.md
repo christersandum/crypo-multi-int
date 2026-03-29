@@ -19,6 +19,7 @@ An interactive link-chart tool for investigating cryptocurrency transactions and
 | **Search** | Filter and highlight nodes by name or address |
 | **Demo data** | Load a sample money-laundering scenario with one click |
 | **Double-click to edit** | Double-click any node or edge to edit its properties |
+| **🤖 AI Chatbot** | In-browser LLM extracts entities and links and adds them to your case graph |
 
 ## 🚀 Getting Started
 
@@ -72,4 +73,38 @@ BTC · ETH · USDT · USDC · XMR · LTC · BNB · SOL · TRX · Other
 
 Enable GitHub Pages in **Settings → Pages → Deploy from branch → `main` / root**.  
 The `.nojekyll` file ensures GitHub Pages serves the raw files without Jekyll processing.
+
+---
+
+## 🤖 AI Chatbot
+
+The **🤖 Chat** tab in the sidebar provides an AI-powered investigation assistant that runs entirely inside your browser — no data leaves your machine unless you enable web search.
+
+### How it works
+
+1. Click the **🤖 Chat** tab.
+2. The AI model (~1 GB) is downloaded once and cached in your browser.
+3. Type a question or paste a block of text (e.g. a news article, a blockchain report).
+4. The AI analyses the text, extracts wallets, people, organisations and transactions, and shows them as coloured entity pills.
+5. Click **➕ Add All to Case** (or the **+** on individual pills) to inject them directly into your active case graph.
+
+### Mode 1 — Standalone (no setup required)
+
+Paste any text into the chat and the AI will structure it for you. No search proxy, no API keys needed.
+
+### Mode 2 — Live web search (requires Val Town proxy)
+
+When a **Search Proxy URL** is configured, the chatbot queries Google via [Serper.dev](https://serper.dev) before answering, giving the AI fresh information from the web.
+
+See **[search-proxy/README.md](search-proxy/README.md)** for the full step-by-step setup (takes about 5 minutes, everything done in the browser).
+
+**Summary:**
+
+| What you need | Where to get it |
+|---|---|
+| Serper.dev API key | <https://serper.dev> (free tier available) |
+| Val Town account | <https://val.town> — sign in with GitHub |
+| Proxy code | Copy from `search-proxy/README.md` |
+
+> **Security:** Your Serper API key lives only in Val Town's encrypted environment variables — it never appears in this repo or in the app.
 
