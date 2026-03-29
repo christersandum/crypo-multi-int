@@ -58,6 +58,7 @@
       <button class="tab-btn active" data-tab="graph">Graph</button>
       <button class="tab-btn" data-tab="nodes">Nodes</button>
       <button class="tab-btn" data-tab="cases">Cases</button>
+      <button class="tab-btn" data-tab="chat">🤖 Chat</button>
     </nav>
 
     <!-- Graph controls tab -->
@@ -134,6 +135,49 @@
       <button class="btn btn-block" onclick="exportAllCases()">⬇ Export All Cases</button>
       <div class="section-title">Your Cases</div>
       <div id="case-list" class="case-list"></div>
+    </div>
+
+    <!-- Chat tab -->
+    <div class="tab-content" id="tab-chat">
+      <div class="chat-container">
+
+        <!-- Settings bar -->
+        <div class="chat-top">
+          <div class="chat-settings-bar">
+            <button id="chat-settings-toggle" class="btn btn-sm">⚙ Settings</button>
+            <span id="chat-status-text" class="chat-status-text"></span>
+          </div>
+          <div id="chat-settings-panel" class="chat-settings-panel hidden">
+            <div class="form-group">
+              <label for="chat-proxy-url">Search Proxy URL (optional)</label>
+              <input id="chat-proxy-url" class="form-control" type="url"
+                     placeholder="https://yourname-searchproxy.web.val.run"
+                     autocomplete="off" />
+              <div class="form-hint">Paste your Val Town proxy URL to enable live web search</div>
+            </div>
+          </div>
+
+          <!-- Model loading progress -->
+          <div id="model-progress" class="model-progress" style="display:none">
+            <div class="progress-bar-track">
+              <div id="model-progress-bar" class="progress-bar-fill" style="width:0%"></div>
+            </div>
+            <div id="model-progress-text" class="progress-text">Initializing…</div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-messages" class="chat-messages"></div>
+
+        <!-- Input -->
+        <div class="chat-input-area">
+          <textarea id="chat-input" class="chat-input-box"
+                    placeholder="Ask about wallets, transactions, entities… (Shift+Enter for newline)"
+                    rows="2"></textarea>
+          <button id="chat-submit" class="btn btn-primary chat-send-btn">▶ Send</button>
+        </div>
+
+      </div>
     </div>
   </aside>
 
@@ -353,5 +397,6 @@
 </script>
 
 <script src="app.js"></script>
+<script type="module" src="chatbot.js"></script>
 </body>
 </html>
